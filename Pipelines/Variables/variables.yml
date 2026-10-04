@@ -1,0 +1,4 @@
+variables:
+  buildConfiguration: Release
+  imageName: counterapi
+  imageTag: $(Build.BuildNumber)

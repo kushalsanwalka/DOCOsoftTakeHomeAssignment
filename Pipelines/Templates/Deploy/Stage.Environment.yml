@@ -1,0 +1,15 @@
+parameters:
+  - name: environment
+
+stages:
+  - stage: Deploy_${{ parameters.environment }}
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    variables:
+      - group: docosoftcounterapi${{ parameters.environment }}
+      - template: ../../Variables/${{ parameters.environment }}.yml
+    jobs:
+      - template: RM.yml
+        parameters:
+          environment: ${{ parameters.environment }}
+
+      - template: App.yml

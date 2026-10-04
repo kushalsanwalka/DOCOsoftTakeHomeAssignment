@@ -1,0 +1,21 @@
+trigger:
+  branches:
+    include: [main]
+  paths:
+    exclude: ['**/*.md']
+
+pr:
+  branches:
+    include: [main]
+  paths:
+    exclude: ['**/*.md']
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  - template: Variables/variables.yml
+
+stages:
+  - template: build.yml
+  - template: deploy.yml

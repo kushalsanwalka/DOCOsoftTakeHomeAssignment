@@ -1,0 +1,44 @@
+jobs:
+  - deployment: App
+    dependsOn: ResourceDeployment
+    environment: ${{ variables.environmentName }}
+    variables:
+      acrName: $[ dependencies.ResourceDeployment.outputs['ResourceDeployment.bicep.containerRegistryName'] ]
+      acrLoginServer: $[ dependencies.ResourceDeployment.outputs['ResourceDeployment.bicep.containerRegistryLoginServer'] ]
+      webAppName: $[ dependencies.ResourceDeployment.outputs['ResourceDeployment.bicep.webAppName'] ]
+      webAppHostName: $[ dependencies.ResourceDeployment.outputs['ResourceDeployment.bicep.webAppHostName'] ]
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+            - task: AzureCLI@2
+              displayName: Push image & restart Web App
+              inputs:
+                azureSubscription: ${{ variables.serviceConnection }}
+                scriptType: bash
+                scriptLocation: inlineScript
+                inlineScript: |
+                  set -e
+                  image=$(acrLoginServer)/$(imageName):$(imageTag)
+                  docker load -i $(Pipeline.Workspace)/Containers/$(imageName).tar
+                  docker tag $(imageName):$(imageTag) $image
+                  az acr login -n $(acrName)
+                  docker push $image
+                  az webapp restart -g $(resourceGroupName) -n $(webAppName)
+
+            - script: |
+                set -e
+                url=https://$(webAppHostName)/count
+                first=$(curl -fs --retry 30 --retry-delay 10 --retry-all-errors $url)
+                second=$(curl -fs $url)
+                echo "first=$first second=$second"
+                test "$second" -eq $((first + 1))
+              displayName: Smoke test /count
+
+            - task: AzureCLI@2
+              displayName: Restart Web App to reset the counter
+              inputs:
+                azureSubscription: ${{ variables.serviceConnection }}
+                scriptType: bash
+                scriptLocation: inlineScript
+                inlineScript: az webapp restart -g $(resourceGroupName) -n $(webAppName)

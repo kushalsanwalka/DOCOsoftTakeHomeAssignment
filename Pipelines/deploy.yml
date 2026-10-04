@@ -1,0 +1,10 @@
+parameters:
+  - name: environments
+    type: object
+    default: [dev, prod]
+
+stages:
+  - ${{ each environment in parameters.environments }}:
+      - template: Templates/Deploy/Stage.Environment.yml
+        parameters:
+          environment: ${{ environment }}

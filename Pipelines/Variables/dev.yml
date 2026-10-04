@@ -1,0 +1,5 @@
+variables:
+  location: uksouth
+  resourceGroupName: docosoftcounterapidev
+  serviceConnection: docosoftcounterapidev
+  environmentName: docosoftcounterapidev

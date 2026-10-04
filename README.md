@@ -7,9 +7,11 @@ The original task is in [ASSIGNMENT.md](ASSIGNMENT.md).
 ## Repository layout
 
 ```
-src/     .NET 8 API and Dockerfile
-tests/   Unit tests
-iac/     Bicep: main.bicep, modules/, parameters/ (dev, prod), bicepconfig.json
+src/        .NET 8 API and Dockerfile
+tests/      Unit tests
+iac/        Bicep: main.bicep, modules/, parameters/ (dev, prod), bicepconfig.json
+Pipelines/  Azure DevOps pipeline: pipeline.yml, build.yml (CI), deploy.yml (CD),
+            Templates/, Variables/
 ```
 
 ## Bugs fixed
@@ -46,6 +48,22 @@ Resources: Log Analytics workspace, Application Insights, Container Registry, Li
 | App Service plan | B1 | P0V4 |
 | Container Registry | Basic | Standard |
 | Log retention | 30 days | 90 days |
+
+## CI/CD
+
+The code is on GitHub because Azure DevOps no longer supports public projects; the pipeline runs in Azure DevOps.
+
+One Azure DevOps pipeline (`Pipelines/pipeline.yml`) with CI and CD in separate files:
+
+- **CI** (`build.yml`): runs the unit tests, lints the Bicep and builds the Docker image, in parallel.
+- **CD** (`deploy.yml`): deploys to dev, then prod. Each environment deploys the Bicep, pushes the image to its registry, restarts the app and runs a smoke test.
+- Pull requests into `main` run CI only. Merges to `main` run CI and CD.
+- `main` is protected by a GitHub ruleset: changes go through a pull request, and force pushes and deletion are blocked. Every PR runs the CI stage as a check; in a team setup, that check would also be required to pass before merging.
+- Prod requires manual approval (an approval check on the `docosoftcounterapiprod` environment in Azure DevOps).
+- Environment-specific values (region, resource group, service connection) are in `Pipelines/Variables/<env>.yml`.
+- One service connection per environment (`docosoftcounterapidev`, `docosoftcounterapiprod`). In production, each would target its own subscription with access limited to that environment.
+- The subscription ID is kept in an Azure DevOps variable group per environment, not in the repository, because the repository is public.
+- After deployment, a smoke test calls `/count` twice and checks the value increases by 1. The counter is held in memory, so the pipeline then restarts the app to reset it and the first real request returns 1.
 
 ## Trade-offs and assumptions
 
