@@ -19,6 +19,11 @@ iac/     Bicep: main.bicep, modules/, parameters/ (dev, prod), bicepconfig.json
 - `dotnet restore ".\CounterApi.csproj"` used a Windows path separator, so the image failed to build on Linux. Changed to `./CounterApi.csproj`.
 - `EXPOSE 5000` didn't match the port the app listens on (8080, the .NET 8 default). Changed to `EXPOSE 8080`.
 
+## Dockerfile improvements
+
+- Removed the separate `dotnet build` step; `dotnet publish` already builds the project.
+- Added a `.dockerignore` so local `bin/` and `obj/` folders aren't copied into the image build.
+
 ## Infrastructure
 
 Resources: Log Analytics workspace, Application Insights, Container Registry, Linux App Service plan and a Web App for Containers.

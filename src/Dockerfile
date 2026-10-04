@@ -6,7 +6,6 @@ WORKDIR /src
 COPY . .
 RUN dotnet restore "./CounterApi.csproj"
 
-RUN dotnet build -c Release -o /app/build
 RUN dotnet publish -c Release -o /app/publish /p:UseAppHost=false
 
 # Runtime stage
