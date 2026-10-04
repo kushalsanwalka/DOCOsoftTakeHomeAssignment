@@ -12,6 +12,7 @@ tests/      Unit tests
 iac/        Bicep: main.bicep, modules/, parameters/ (dev, prod), bicepconfig.json
 Pipelines/  Azure DevOps pipeline: pipeline.yml, build.yml (CI), deploy.yml (CD),
             Templates/, Variables/
+docs/       Screenshots of pipeline runs
 ```
 
 ## Bugs fixed
@@ -64,6 +65,30 @@ One Azure DevOps pipeline (`Pipelines/pipeline.yml`) with CI and CD in separate 
 - One service connection per environment (`docosoftcounterapidev`, `docosoftcounterapiprod`). In production, each would target its own subscription with access limited to that environment.
 - The subscription ID is kept in an Azure DevOps variable group per environment, not in the repository, because the repository is public.
 - After deployment, a smoke test calls `/count` twice and checks the value increases by 1. The counter is held in memory, so the pipeline then restarts the app to reset it and the first real request returns 1.
+
+## Pipeline runs
+
+Pull request check: CI only, deploy stages skipped.
+
+![PR check](docs/images/prcheck.png)
+
+Unit tests, including the new counter test.
+
+![Tests](docs/images/tests.png)
+
+Merge to `main`: dev deployed, prod waiting for approval.
+
+![Pipeline run](docs/images/pipelinerun.png)
+
+Smoke test after the dev deployment.
+
+![Smoke test](docs/images/smoketest.png)
+
+The smoke test step took about 5 minutes on this run. Most of that is waiting for the app to start, not the test itself: after the restart, App Service pulls the image from the registry and starts the container, and the test retries `/count` every 10 seconds until the app responds. On this first deployment App Service had to download the whole image; later deployments only pull the layers that changed, so they start faster.
+
+First request to the deployed app after the pipeline resets it.
+
+![Count endpoint](docs/images/counterendpoint.png)
 
 ## Trade-offs and assumptions
 
