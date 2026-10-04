@@ -1,0 +1,14 @@
+jobs:
+  - job: DotNet
+    displayName: Build & test
+    steps:
+      - task: UseDotNet@2
+        inputs:
+          version: 8.x
+
+      - task: DotNetCoreCLI@2
+        displayName: Test
+        inputs:
+          command: test
+          projects: tests/**/*.Tests.csproj
+          arguments: --configuration $(buildConfiguration)

@@ -1,48 +1,73 @@
-# DevOps Technical Task
+# Counter API on Azure App Service
 
-## Overview
+A .NET 8 API with one endpoint, `GET /count`, which returns how many times it has been called. It runs as a Linux container on Azure App Service, with the infrastructure written in Bicep.
 
-This technical task allows you to demonstrate your DevOps and troubleshooting skills. The exercise should take no more than a weekend to complete. If you need any clarification, please don't hesitate to ask.
+The original task is in [ASSIGNMENT.md](ASSIGNMENT.md).
 
-## Scenario
+## Repository layout
 
-This repository contains a .NET service that serves a single endpoint: `/count`. Each call to this endpoint increments a counter and returns the number of times the endpoint has been called.
+```
+src/        .NET 8 API and Dockerfile
+tests/      Unit tests
+iac/        Bicep: main.bicep, modules/, parameters/ (dev, prod), bicepconfig.json
+Pipelines/  Azure DevOps pipeline: pipeline.yml, build.yml (CI), deploy.yml (CD),
+            Templates/, Variables/
+```
 
-A previous engineer left the project in an incomplete state. There are issues across the application code, container configuration, and deployment pipelines that need to be resolved before the application can be deployed successfully.
+## Bugs fixed
 
-## Task Details
+**Dockerfile**
 
-### 1. Fix the Application
+- `dotnet restore ".\CounterApi.csproj"` used a Windows path separator, so the image failed to build on Linux. Changed to `./CounterApi.csproj`.
+- `EXPOSE 5000` didn't match the port the app listens on (8080, the .NET 8 default). Changed to `EXPOSE 8080`.
 
-The `/count` endpoint has a reported bug — users are seeing unexpected counter values on their first call. Investigate the issue, identify the root cause, and fix it. Ensure your fix is covered by appropriate tests.
+**Counter**
 
-### 2. Infrastructure as Code
+- `/count` returned 0 on the first call because `CounterService` used a post-increment (`return _counter++;`), which returns the value before adding 1. Changed to a pre-increment (`return ++_counter;`).
+- The existing tests only used a mocked service, so they never ran the real counter. Added a test that calls the real `CounterService` and checks the first call returns 1.
 
-Write [Bicep](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/overview) templates to provision the necessary Azure resources. Place these in the `iac/` folder. At minimum, your infrastructure should include:
+## Dockerfile improvements
 
-- App Service Plan (Linux)
-- App Service configured for Docker container deployment
-- Application Insights
+- Removed the separate `dotnet build` step; `dotnet publish` already builds the project.
+- Added a `.dockerignore` so local `bin/` and `obj/` folders aren't copied into the image build.
 
-### 3. Create CI/CD Pipelines
+## Infrastructure
 
-Create Azure DevOps pipeline definitions to build and deploy the application:
-- Include best practices for PR workflows, CI/CD triggers, and approval gates
+Resources: Log Analytics workspace, Application Insights, Container Registry, Linux App Service plan and a Web App for Containers.
 
-### 4. Troubleshoot Connectivity
+- One module per resource type, each configured from the parameter file. Optional settings fall back to defaults.
+- The Web App finds the plan, registry, Application Insights and workspace by key from the parameter file.
+- Naming: `<company><project><environment>` with no hyphens, for example `docosoftcounterapidev`, because Container Registry names can't contain hyphens.
+- Tags: a shared `environment` tag, plus optional tags per resource.
+- The Web App pulls images with its managed identity (AcrPull); the registry admin user is disabled.
+- HTTPS only, TLS 1.2, FTP disabled. Logs go to Log Analytics.
+- `WEBSITES_PORT=8080` tells App Service which port the container listens on.
 
-Once deployed, ensure the application is reachable and the `/count` endpoint returns correct values.
+| | dev | prod |
+|---|---|---|
+| App Service plan | B1 | P0V4 |
+| Container Registry | Basic | Standard |
+| Log retention | 30 days | 90 days |
 
-## Requirements
+## CI/CD
 
-- Solution pushed to a public GitHub or Azure DevOps repository
-- Working Bicep templates for all Azure infrastructure (do **not** use ARM JSON templates)
-- Working CI and CD pipelines implemented as two separate pipeline files
-- A readme documenting:
-  - Bugs found and how you fixed them
-  - Infrastructure design decisions
-  - Any trade-offs or assumptions made
+The code is on GitHub because Azure DevOps no longer supports public projects; the pipeline runs in Azure DevOps.
 
-## Notes
+One Azure DevOps pipeline (`Pipelines/pipeline.yml`) with CI and CD in separate files:
 
-- If you have any questions, please do not hesitate to ask
+- **CI** (`build.yml`): runs the unit tests, lints the Bicep and builds the Docker image, in parallel.
+- **CD** (`deploy.yml`): deploys to dev, then prod. Each environment deploys the Bicep, pushes the image to its registry, restarts the app and runs a smoke test.
+- Pull requests into `main` run CI only. Merges to `main` run CI and CD.
+- `main` is protected by a GitHub ruleset: changes go through a pull request, and force pushes and deletion are blocked. Every PR runs the CI stage as a check; in a team setup, that check would also be required to pass before merging.
+- Prod requires manual approval (an approval check on the `docosoftcounterapiprod` environment in Azure DevOps).
+- Environment-specific values (region, resource group) are in `Pipelines/Variables/<env>.yml`. The Azure DevOps service connection, environment and variable group for each environment are named `docosoftcounterapi<env>`.
+- One service connection per environment (`docosoftcounterapidev`, `docosoftcounterapiprod`). In production, each would target its own subscription with access limited to that environment.
+- The subscription ID is kept in an Azure DevOps variable group per environment, not in the repository, because the repository is public.
+- After deployment, a smoke test calls `/count` twice and checks the value increases by 1. The counter is held in memory, so the pipeline then restarts the app to reset it and the first real request returns 1.
+
+## Trade-offs and assumptions
+
+- **Region:** deployed to UK South because of capacity constraints in West Europe and North Europe.
+- **Prod:** P0V4 App Service plan.
+- **Single instance:** the app is lightweight (a single counter endpoint), so one instance is enough.
+- **Linter warning:** `diagnosticSettings` uses the newest API version available (a preview); the linter warning about it is expected.

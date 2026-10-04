@@ -1,0 +1,17 @@
+jobs:
+  - job: Bicep
+    displayName: Validate Bicep
+    steps:
+      - script: |
+          set -e
+          az bicep install
+          az bicep lint --file main.bicep
+        displayName: Lint
+        workingDirectory: iac
+
+      - task: PublishPipelineArtifact@1
+        displayName: Publish Bicep
+        condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+        inputs:
+          targetPath: iac
+          artifact: Bicep

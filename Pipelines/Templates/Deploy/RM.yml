@@ -1,0 +1,36 @@
+parameters:
+  - name: environment
+  - name: environmentName
+  - name: serviceConnection
+
+jobs:
+  - deployment: ResourceDeployment
+    environment: ${{ parameters.environmentName }}
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+            - task: AzureResourceManagerTemplateDeployment@3
+              displayName: Deploy Bicep
+              inputs:
+                deploymentScope: Resource Group
+                azureResourceManagerConnection: ${{ parameters.serviceConnection }}
+                subscriptionId: $(subscriptionId)
+                action: Create Or Update Resource Group
+                resourceGroupName: $(resourceGroupName)
+                location: $(location)
+                templateLocation: Linked artifact
+                csmFile: $(Pipeline.Workspace)/Bicep/main.bicep
+                csmParametersFile: $(Pipeline.Workspace)/Bicep/parameters/${{ parameters.environment }}.bicepparam
+                overrideParameters: -containerImageTag $(imageTag)
+                deploymentMode: Incremental
+                deploymentName: $(Build.BuildNumber)
+                deploymentOutputs: deploymentOutputs
+
+            - pwsh: |
+                $outputs = '$(deploymentOutputs)' | ConvertFrom-Json
+                foreach ($output in $outputs.PSObject.Properties) {
+                  Write-Host "##vso[task.setvariable variable=$($output.Name);isOutput=true]$($output.Value.value)"
+                }
+              name: bicep
+              displayName: Expose outputs

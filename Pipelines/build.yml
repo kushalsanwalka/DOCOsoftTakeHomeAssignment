@@ -1,0 +1,6 @@
+stages:
+  - stage: Build
+    jobs:
+      - template: Templates/Build/DotNet.yml
+      - template: Templates/Build/Bicep.yml
+      - template: Templates/Build/Container.yml
