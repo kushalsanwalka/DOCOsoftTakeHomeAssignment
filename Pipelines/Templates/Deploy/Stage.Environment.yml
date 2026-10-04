@@ -11,5 +11,10 @@ stages:
       - template: RM.yml
         parameters:
           environment: ${{ parameters.environment }}
+          environmentName: docosoftcounterapi${{ parameters.environment }}
+          serviceConnection: docosoftcounterapi${{ parameters.environment }}
 
       - template: App.yml
+        parameters:
+          environmentName: docosoftcounterapi${{ parameters.environment }}
+          serviceConnection: docosoftcounterapi${{ parameters.environment }}

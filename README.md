@@ -60,7 +60,7 @@ One Azure DevOps pipeline (`Pipelines/pipeline.yml`) with CI and CD in separate 
 - Pull requests into `main` run CI only. Merges to `main` run CI and CD.
 - `main` is protected by a GitHub ruleset: changes go through a pull request, and force pushes and deletion are blocked. Every PR runs the CI stage as a check; in a team setup, that check would also be required to pass before merging.
 - Prod requires manual approval (an approval check on the `docosoftcounterapiprod` environment in Azure DevOps).
-- Environment-specific values (region, resource group, service connection) are in `Pipelines/Variables/<env>.yml`.
+- Environment-specific values (region, resource group) are in `Pipelines/Variables/<env>.yml`. The Azure DevOps service connection, environment and variable group for each environment are named `docosoftcounterapi<env>`.
 - One service connection per environment (`docosoftcounterapidev`, `docosoftcounterapiprod`). In production, each would target its own subscription with access limited to that environment.
 - The subscription ID is kept in an Azure DevOps variable group per environment, not in the repository, because the repository is public.
 - After deployment, a smoke test calls `/count` twice and checks the value increases by 1. The counter is held in memory, so the pipeline then restarts the app to reset it and the first real request returns 1.

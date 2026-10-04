@@ -1,7 +1,11 @@
+parameters:
+  - name: environmentName
+  - name: serviceConnection
+
 jobs:
   - deployment: App
     dependsOn: ResourceDeployment
-    environment: ${{ variables.environmentName }}
+    environment: ${{ parameters.environmentName }}
     variables:
       acrName: $[ dependencies.ResourceDeployment.outputs['ResourceDeployment.bicep.containerRegistryName'] ]
       acrLoginServer: $[ dependencies.ResourceDeployment.outputs['ResourceDeployment.bicep.containerRegistryLoginServer'] ]
@@ -14,7 +18,7 @@ jobs:
             - task: AzureCLI@2
               displayName: Push image & restart Web App
               inputs:
-                azureSubscription: ${{ variables.serviceConnection }}
+                azureSubscription: ${{ parameters.serviceConnection }}
                 scriptType: bash
                 scriptLocation: inlineScript
                 inlineScript: |
@@ -38,7 +42,7 @@ jobs:
             - task: AzureCLI@2
               displayName: Restart Web App to reset the counter
               inputs:
-                azureSubscription: ${{ variables.serviceConnection }}
+                azureSubscription: ${{ parameters.serviceConnection }}
                 scriptType: bash
                 scriptLocation: inlineScript
                 inlineScript: az webapp restart -g $(resourceGroupName) -n $(webAppName)

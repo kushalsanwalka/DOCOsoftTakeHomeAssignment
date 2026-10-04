@@ -1,9 +1,11 @@
 parameters:
   - name: environment
+  - name: environmentName
+  - name: serviceConnection
 
 jobs:
   - deployment: ResourceDeployment
-    environment: ${{ variables.environmentName }}
+    environment: ${{ parameters.environmentName }}
     strategy:
       runOnce:
         deploy:
@@ -12,7 +14,7 @@ jobs:
               displayName: Deploy Bicep
               inputs:
                 deploymentScope: Resource Group
-                azureResourceManagerConnection: ${{ variables.serviceConnection }}
+                azureResourceManagerConnection: ${{ parameters.serviceConnection }}
                 subscriptionId: $(subscriptionId)
                 action: Create Or Update Resource Group
                 resourceGroupName: $(resourceGroupName)
