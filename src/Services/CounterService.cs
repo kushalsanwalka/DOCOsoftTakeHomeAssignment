@@ -33,7 +33,7 @@ public class CounterService : ICounterService
     {
         lock (_lock)
         {
-            return _counter++;
+            return ++_counter;
         }
     }
 }

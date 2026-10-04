@@ -19,6 +19,11 @@ iac/     Bicep: main.bicep, modules/, parameters/ (dev, prod), bicepconfig.json
 - `dotnet restore ".\CounterApi.csproj"` used a Windows path separator, so the image failed to build on Linux. Changed to `./CounterApi.csproj`.
 - `EXPOSE 5000` didn't match the port the app listens on (8080, the .NET 8 default). Changed to `EXPOSE 8080`.
 
+**Counter**
+
+- `/count` returned 0 on the first call because `CounterService` used a post-increment (`return _counter++;`), which returns the value before adding 1. Changed to a pre-increment (`return ++_counter;`).
+- The existing tests only used a mocked service, so they never ran the real counter. Added a test that calls the real `CounterService` and checks the first call returns 1.
+
 ## Dockerfile improvements
 
 - Removed the separate `dotnet build` step; `dotnet publish` already builds the project.
